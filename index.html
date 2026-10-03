@@ -118,7 +118,7 @@ function parseICS(t){const o=[];let e=null;
  return o.sort((a,b)=>a.s-b.s)}
 function take(txt){if(!txt.includes('BEGIN:VCALENDAR'))return false;const x=parseICS(txt);if(!x.length)return false;L=x;S.at=Date.now();save();render();return true}
 async function sync(){
- if(!S.url.trim()&&S.m&&S.m.key)return syncM();
+ if(!S.url.trim()&&S.m){if(S.m.pw)return syncP();if(S.m.key)return syncM()}
  const u=S.url.trim().replace(/^webcal:/,'https:');if(!u){tab='set';render();return toast('Trage zuerst deinen Untis-Link ein')}
  $('#sync').classList.add('spin');
  const tries=[u,...(S.proxy?[prox(u)]:[]),'https://corsproxy.io/?url='+encodeURIComponent(u)];
@@ -136,6 +136,19 @@ async function rpc(m,method,params){
  const u='https://'+m.host+'/WebUntis/jsonrpc_intern.do?m='+method+'&school='+encodeURIComponent(m.school)+'&v=i2.2';
  const r=await fetch(prox(u),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'sp',method,params:[{...params,auth}],jsonrpc:'2.0'})});
  const j=await r.json();if(j.error)throw new Error(j.error.message||'Untis-Fehler');return j.result}
+async function syncP(){
+ const m=S.m||{};
+ if(!(m.pw&&m.user&&m.host&&m.school))return toast('Bitte Schule, Server, Benutzer und Passwort ausfüllen');
+ if(!S.proxy)return toast('Dafür brauchst du den Proxy (Cloudflare Worker)');
+ $('#sync').classList.add('spin');
+ try{
+  const r=await fetch(S.proxy.trim().split('?')[0].replace(/\/$/,'')+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host:m.host,school:m.school,user:m.user,password:m.pw})});
+  const j=await r.json();if(j.error)throw new Error(j.error);
+  const x=j.lessons.map(l=>({sub:l.sub,s:new Date(l.start).getTime(),e:new Date(l.end).getTime(),room:l.room})).filter(l=>l.s&&l.e).sort((a,b)=>a.s-b.s);
+  if(!x.length)throw new Error('Keine Stunden erhalten ('+JSON.stringify(j.debug)+')');
+  L=x;S.at=Date.now();save();render();toast(L.length+' Stunden geladen')
+ }catch(e){toast('Abruf fehlgeschlagen: '+e.message)}
+ $('#sync').classList.remove('spin')}
 async function syncM(){
  const m=S.m||{};
  if(!(m.key&&m.user&&m.host&&m.school))return toast('Bitte alle Felder bei „Untis-Zugang“ ausfüllen');
@@ -190,15 +203,17 @@ function rSet(){
  <label for="m1">Schule</label><input id="m1" value="${esc((S.m||{}).school)}" placeholder="htl-eisenstadt" autocapitalize="off">
  <label for="m2">Server</label><input id="m2" value="${esc((S.m||{}).host)}" placeholder="schule.webuntis.com" inputmode="url" autocapitalize="off">
  <label for="m3">Benutzer</label><input id="m3" value="${esc((S.m||{}).user)}" autocapitalize="off">
- <label for="m4">Schlüssel</label><input id="m4" type="password" value="${esc((S.m||{}).key)}" autocomplete="off" autocapitalize="off">
- <div class="row"><button class="pri" id="gm">Mit Zugang laden</button></div></div>
+ <label for="m4">Schlüssel (Untis Mobile)</label><input id="m4" type="password" value="${esc((S.m||{}).key)}" autocomplete="off" autocapitalize="off">
+ <label for="m5">Passwort (WebUntis)</label><input id="m5" type="password" value="${esc((S.m||{}).pw)}" autocomplete="off">
+ <div class="row"><button class="pri" id="gp">Mit Passwort laden</button><button class="ghost" id="gm">Mit Schlüssel laden</button></div></div>
  <div class="sec"><h3>Erinnerungen</h3><p class="hint">Du bekommst 2 Tage und 1 Tag vor der nächsten Stunde des Fachs eine Nachricht (ab 17:00). Am zuverlässigsten, wenn die App installiert ist; ansonsten beim Öffnen.</p><button class="pri" id="nt">Benachrichtigungen erlauben</button></div>`;
  $('#u').onchange=e=>{S.url=e.target.value;save()};$('#p').onchange=e=>{S.proxy=e.target.value;save()};
  $('#go').onclick=()=>{S.url=$('#u').value;S.proxy=$('#p').value;save();tab='plan';sync()};
  $('#f').onchange=async e=>{const f=e.target.files[0];if(f){toast(take(await f.text())?L.length+' Stunden importiert':'Datei nicht lesbar');tab='plan';render()}};
  $('#nt').onclick=enableN;
- for(const [i,k] of [['m1','school'],['m2','host'],['m3','user'],['m4','key']])$('#'+i).onchange=e=>{S.m={...(S.m||{}),[k]:e.target.value.trim()};save()};
- $('#gm').onclick=()=>{S.m={school:$('#m1').value.trim(),host:$('#m2').value.trim(),user:$('#m3').value.trim(),key:$('#m4').value.trim()};save();tab='plan';syncM()}}
+ for(const [i,k] of [['m1','school'],['m2','host'],['m3','user'],['m4','key'],['m5','pw']])$('#'+i).onchange=e=>{S.m={...(S.m||{}),[k]:e.target.value.trim()};save()};
+ const rd=()=>{S.m={school:$('#m1').value.trim(),host:$('#m2').value.trim(),user:$('#m3').value.trim(),key:$('#m4').value.trim(),pw:$('#m5').value.trim()};save();tab='plan'};
+ $('#gm').onclick=()=>{rd();syncM()};$('#gp').onclick=()=>{rd();syncP()}}
 async function enableN(){
  if(!('Notification' in window))return toast('Dieser Browser unterstützt keine Benachrichtigungen');
  if(await Notification.requestPermission()!='granted')return toast('Benachrichtigungen sind blockiert');
@@ -238,5 +253,5 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)runCheck()
  try{const s=await idbGet();if(s)for(const k in s.N)if(N[k])N[k].sent=[...new Set([...(N[k].sent||[]),...(s.N[k].sent||[])])]}catch{}
  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
  render();save();runCheck();
- if((S.url||(S.m&&S.m.key))&&navigator.onLine&&Date.now()-S.at>6*36e5)sync()})();
+ if((S.url||(S.m&&(S.m.key||S.m.pw)))&&navigator.onLine&&Date.now()-S.at>6*36e5)sync()})();
 </script></body></html>
