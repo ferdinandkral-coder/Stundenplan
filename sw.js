@@ -23,7 +23,7 @@ const idbOpen=()=>new Promise((ok,no)=>{const q=indexedDB.open('stundenplan',1);
 const idbGet=async()=>{const d=await idbOpen();return new Promise(r=>{const q=d.transaction('k').objectStore('k').get('s');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})};
 const idbPut=async v=>{const d=await idbOpen();d.transaction('k','readwrite').objectStore('k').put(v,'s')};
 
-const C='stundenplan-v1',A=['./','index.html'];
+const C='stundenplan-v2',A=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!=C).map(x=>caches.delete(x)))));clients.claim()});
 // Netzwerk zuerst (neue GitHub-Version), sonst Cache
