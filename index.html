@@ -121,7 +121,7 @@ async function sync(){
  if(!S.url.trim()&&S.m&&S.m.key)return syncM();
  const u=S.url.trim().replace(/^webcal:/,'https:');if(!u){tab='set';render();return toast('Trage zuerst deinen Untis-Link ein')}
  $('#sync').classList.add('spin');
- const tries=[u,...(S.proxy?[S.proxy.replace('{url}',encodeURIComponent(u))]:[]),'https://corsproxy.io/?url='+encodeURIComponent(u)];
+ const tries=[u,...(S.proxy?[prox(u)]:[]),'https://corsproxy.io/?url='+encodeURIComponent(u)];
  for(const t of tries){try{const r=await fetch(t);if(r.ok&&take(await r.text())){$('#sync').classList.remove('spin');return toast(L.length+' Stunden geladen')}}catch{}}
  $('#sync').classList.remove('spin');toast('Abruf fehlgeschlagen. Eigener Proxy oder Datei-Import hilft (Einstellungen).')}
 
@@ -130,10 +130,11 @@ const b32=s=>{let b='',o=[];for(const c of s.toUpperCase().replace(/[^A-Z2-7]/g,
 async function otp(key,t){const k=await crypto.subtle.importKey('raw',b32(key),{name:'HMAC',hash:'SHA-1'},false,['sign']);const c=Math.floor(t/3e4),v=new DataView(new ArrayBuffer(8));v.setUint32(0,Math.floor(c/2**32));v.setUint32(4,c>>>0);const h=new Uint8Array(await crypto.subtle.sign('HMAC',k,v.buffer)),o=h[h.length-1]&15,n=(((h[o]&127)<<24)|(h[o+1]<<16)|(h[o+2]<<8)|h[o+3])%1e6;return String(n).padStart(6,'0')}
 /*END*/
 // ---- Untis-Mobile-Zugang (inoffizielle JSON-RPC-Schnittstelle, läuft über den Proxy) ----
+const prox=u=>S.proxy.includes('{url}')?S.proxy.replace('{url}',encodeURIComponent(u)):S.proxy.trim().split('?')[0]+'?u='+encodeURIComponent(u);
 async function rpc(m,method,params){
  const t=Date.now(),auth={user:m.user,otp:await otp(m.key,t),clientTime:t};
  const u='https://'+m.host+'/WebUntis/jsonrpc_intern.do?m='+method+'&school='+encodeURIComponent(m.school)+'&v=i2.2';
- const r=await fetch(S.proxy.replace('{url}',encodeURIComponent(u)),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'sp',method,params:[{...params,auth}],jsonrpc:'2.0'})});
+ const r=await fetch(prox(u),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'sp',method,params:[{...params,auth}],jsonrpc:'2.0'})});
  const j=await r.json();if(j.error)throw new Error(j.error.message||'Untis-Fehler');return j.result}
 async function syncM(){
  const m=S.m||{};
