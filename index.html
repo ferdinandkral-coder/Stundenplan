@@ -103,7 +103,7 @@ const $=s=>document.querySelector(s),LS=(k,d)=>{try{return JSON.parse(localStora
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const hue=s=>{let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h};
 const PX=1.5,tm=s=>new Date(s).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'});
-let S=LS('cfg',{url:'',proxy:'',at:0}),L=LS('lessons',[]),N=LS('notes',{}),day=sod(new Date()),tab=location.hash=='#todo'?'todo':'plan';
+let S=LS('cfg',{url:'',proxy:'',at:0}),L=LS('lessons',[]),N=LS('notes',{}),day=(d=>{d=sod(d);if(d.getDay()==6)d.setDate(d.getDate()+2);if(d.getDay()==0)d.setDate(d.getDate()+1);return d})(new Date()),tab=location.hash=='#todo'?'todo':'plan';
 const toast=m=>{$('#toast').textContent=m;clearTimeout(toast.t);toast.t=setTimeout(()=>$('#toast').textContent='',3500)};
 const save=()=>{localStorage.setItem('notes',JSON.stringify(N));localStorage.setItem('lessons',JSON.stringify(L));localStorage.setItem('cfg',JSON.stringify(S));idbPut({L,N}).catch(()=>{})};
 
@@ -157,7 +157,8 @@ async function syncM(){
 // ---- Ansichten ----
 function render(){
  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
- $('#sub').textContent=(S.at?'Stand '+fmt(S.at):'Noch nicht geladen')+(navigator.onLine?'':' · offline');
+ const dd=s=>new Date(s).toLocaleDateString('de-AT',{day:'numeric',month:'numeric'});
+ $('#sub').textContent=(S.at?'Stand '+fmt(S.at):'Noch nicht geladen')+(L.length?' · '+L.length+' Stunden ('+dd(L[0].s)+'–'+dd(L[L.length-1].s)+')':'')+(navigator.onLine?'':' · offline');
  $('#cnt').textContent=openHw().length||'';
  ({plan:rPlan,todo:rTodo,set:rSet})[tab]()}
 const empty=()=>`<div class="empty"><b>Noch kein Stundenplan</b>Füge in den Einstellungen deinen Untis-Link ein.<br><br><button class="pri" data-go="set">Einstellungen öffnen</button></div>`;
