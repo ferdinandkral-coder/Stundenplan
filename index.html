@@ -118,11 +118,40 @@ function parseICS(t){const o=[];let e=null;
  return o.sort((a,b)=>a.s-b.s)}
 function take(txt){if(!txt.includes('BEGIN:VCALENDAR'))return false;const x=parseICS(txt);if(!x.length)return false;L=x;S.at=Date.now();save();render();return true}
 async function sync(){
+ if(!S.url.trim()&&S.m&&S.m.key)return syncM();
  const u=S.url.trim().replace(/^webcal:/,'https:');if(!u){tab='set';render();return toast('Trage zuerst deinen Untis-Link ein')}
  $('#sync').classList.add('spin');
  const tries=[u,...(S.proxy?[S.proxy.replace('{url}',encodeURIComponent(u))]:[]),'https://corsproxy.io/?url='+encodeURIComponent(u)];
  for(const t of tries){try{const r=await fetch(t);if(r.ok&&take(await r.text())){$('#sync').classList.remove('spin');return toast(L.length+' Stunden geladen')}}catch{}}
  $('#sync').classList.remove('spin');toast('Abruf fehlgeschlagen. Eigener Proxy oder Datei-Import hilft (Einstellungen).')}
+
+/*TOTP*/
+const b32=s=>{let b='',o=[];for(const c of s.toUpperCase().replace(/[^A-Z2-7]/g,''))b+='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'.indexOf(c).toString(2).padStart(5,'0');for(let i=0;i+8<=b.length;i+=8)o.push(parseInt(b.slice(i,i+8),2));return new Uint8Array(o)};
+async function otp(key,t){const k=await crypto.subtle.importKey('raw',b32(key),{name:'HMAC',hash:'SHA-1'},false,['sign']);const c=Math.floor(t/3e4),v=new DataView(new ArrayBuffer(8));v.setUint32(0,Math.floor(c/2**32));v.setUint32(4,c>>>0);const h=new Uint8Array(await crypto.subtle.sign('HMAC',k,v.buffer)),o=h[h.length-1]&15,n=(((h[o]&127)<<24)|(h[o+1]<<16)|(h[o+2]<<8)|h[o+3])%1e6;return String(n).padStart(6,'0')}
+/*END*/
+// ---- Untis-Mobile-Zugang (inoffizielle JSON-RPC-Schnittstelle, läuft über den Proxy) ----
+async function rpc(m,method,params){
+ const t=Date.now(),auth={user:m.user,otp:await otp(m.key,t),clientTime:t};
+ const u='https://'+m.host+'/WebUntis/jsonrpc_intern.do?m='+method+'&school='+encodeURIComponent(m.school)+'&v=i2.2';
+ const r=await fetch(S.proxy.replace('{url}',encodeURIComponent(u)),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'sp',method,params:[{...params,auth}],jsonrpc:'2.0'})});
+ const j=await r.json();if(j.error)throw new Error(j.error.message||'Untis-Fehler');return j.result}
+async function syncM(){
+ const m=S.m||{};
+ if(!(m.key&&m.user&&m.host&&m.school))return toast('Bitte alle Felder bei „Untis-Zugang“ ausfüllen');
+ if(!S.proxy)return toast('Dafür brauchst du den Proxy (Cloudflare Worker)');
+ $('#sync').classList.add('spin');
+ try{
+  const ud=await rpc(m,'getUserData2017',{}),us=ud.userData,a=new Date();a.setDate(a.getDate()-((a.getDay()+6)%7));
+  const b=new Date(a);b.setDate(b.getDate()+56),ymd=d=>d.getFullYear()*1e4+(d.getMonth()+1)*100+d.getDate();
+  const tt=await rpc(m,'getTimetable2017',{id:us.elemId,type:us.elemType,startDate:ymd(a),endDate:ymd(b),masterDataTimestamp:0,timetableTimestamp:0,timetableTimestamps:[]});
+  const md=tt.masterData||ud.masterData||{},nm=(list,id)=>{const x=(list||[]).find(y=>y.id==id);return x?(x.longName||x.name):''};
+  const ts=(d,t)=>new Date(Math.floor(d/1e4),Math.floor(d%1e4/100)-1,d%100,Math.floor(t/100),t%100).getTime();
+  const x=(tt.timetable.periods||[]).map(p=>{const el=p.elements||[],su=el.find(e=>e.type==3),ro=el.find(e=>e.type==4);
+   return{sub:(su&&nm(md.subjects,su.id))||p.lessonText||'Stunde',s:ts(p.date,p.startTime),e:ts(p.date,p.endTime),room:(ro&&((md.rooms||[]).find(y=>y.id==ro.id)||{}).name)||''}}).sort((p,q)=>p.s-q.s);
+  if(!x.length)throw new Error('Keine Stunden erhalten');
+  L=x;S.at=Date.now();save();render();toast(L.length+' Stunden geladen')
+ }catch(e){toast('Abruf fehlgeschlagen: '+e.message)}
+ $('#sync').classList.remove('spin')}
 
 // ---- Ansichten ----
 function render(){
@@ -155,11 +184,19 @@ function rSet(){
  $('#main').innerHTML=`<div class="sec"><h3>Untis-Stundenplan</h3><label for="u">Kalender-Link (iCal)</label><input id="u" value="${esc(S.url)}" placeholder="webcal://… oder https://…" inputmode="url"><p class="hint">In WebUntis: Stundenplan öffnen, Kalender abonnieren / Export, Link kopieren.</p>
  <label for="p">Eigener Proxy (optional)</label><input id="p" value="${esc(S.proxy)}" placeholder="https://dein-worker.workers.dev/?u={url}"><p class="hint">Untis erlaubt Browser-Abrufe oft nicht direkt. Ein eigener Proxy ist am zuverlässigsten.</p>
  <div class="row"><button class="pri" id="go">Jetzt laden</button><label class="ghost" style="margin:0;text-align:center;cursor:pointer">.ics-Datei<input id="f" type="file" accept=".ics,text/calendar" hidden></label></div></div>
+ <div class="sec"><h3>Untis-Zugang (ohne iCal)</h3><p class="hint">Daten aus „Zugriff über Untis Mobile“ im Profil (Freigaben). Bleiben nur auf diesem Gerät. Braucht den Proxy.</p>
+ <label for="m1">Schule</label><input id="m1" value="${esc((S.m||{}).school)}" placeholder="htl-eisenstadt" autocapitalize="off">
+ <label for="m2">Server</label><input id="m2" value="${esc((S.m||{}).host)}" placeholder="schule.webuntis.com" inputmode="url" autocapitalize="off">
+ <label for="m3">Benutzer</label><input id="m3" value="${esc((S.m||{}).user)}" autocapitalize="off">
+ <label for="m4">Schlüssel</label><input id="m4" type="password" value="${esc((S.m||{}).key)}" autocomplete="off" autocapitalize="off">
+ <div class="row"><button class="pri" id="gm">Mit Zugang laden</button></div></div>
  <div class="sec"><h3>Erinnerungen</h3><p class="hint">Du bekommst 2 Tage und 1 Tag vor der nächsten Stunde des Fachs eine Nachricht (ab 17:00). Am zuverlässigsten, wenn die App installiert ist; ansonsten beim Öffnen.</p><button class="pri" id="nt">Benachrichtigungen erlauben</button></div>`;
  $('#u').onchange=e=>{S.url=e.target.value;save()};$('#p').onchange=e=>{S.proxy=e.target.value;save()};
  $('#go').onclick=()=>{S.url=$('#u').value;S.proxy=$('#p').value;save();tab='plan';sync()};
  $('#f').onchange=async e=>{const f=e.target.files[0];if(f){toast(take(await f.text())?L.length+' Stunden importiert':'Datei nicht lesbar');tab='plan';render()}};
- $('#nt').onclick=enableN}
+ $('#nt').onclick=enableN;
+ for(const [i,k] of [['m1','school'],['m2','host'],['m3','user'],['m4','key']])$('#'+i).onchange=e=>{S.m={...(S.m||{}),[k]:e.target.value.trim()};save()};
+ $('#gm').onclick=()=>{S.m={school:$('#m1').value.trim(),host:$('#m2').value.trim(),user:$('#m3').value.trim(),key:$('#m4').value.trim()};save();tab='plan';syncM()}}
 async function enableN(){
  if(!('Notification' in window))return toast('Dieser Browser unterstützt keine Benachrichtigungen');
  if(await Notification.requestPermission()!='granted')return toast('Benachrichtigungen sind blockiert');
@@ -199,5 +236,5 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)runCheck()
  try{const s=await idbGet();if(s)for(const k in s.N)if(N[k])N[k].sent=[...new Set([...(N[k].sent||[]),...(s.N[k].sent||[])])]}catch{}
  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
  render();save();runCheck();
- if(S.url&&navigator.onLine&&Date.now()-S.at>6*36e5)sync()})();
+ if((S.url||(S.m&&S.m.key))&&navigator.onLine&&Date.now()-S.at>6*36e5)sync()})();
 </script></body></html>
