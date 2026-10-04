@@ -23,12 +23,12 @@ const idbOpen=()=>new Promise((ok,no)=>{const q=indexedDB.open('stundenplan',1);
 const idbGet=async()=>{const d=await idbOpen();return new Promise(r=>{const q=d.transaction('k').objectStore('k').get('s');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})};
 const idbPut=async v=>{const d=await idbOpen();d.transaction('k','readwrite').objectStore('k').put(v,'s')};
 
-const C='stundenplan-v2',A=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
+const C='stundenplan-v3',A=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!=C).map(x=>caches.delete(x)))));clients.claim()});
 // Netzwerk zuerst (neue GitHub-Version), sonst Cache
 self.addEventListener('fetch',e=>{
-  const r=e.request;if(r.method!='GET'||new URL(r.url).origin!=location.origin)return;
+  const r=e.request;const hn=new URL(r.url).hostname;if(r.method!='GET'||(new URL(r.url).origin!=location.origin&&!/(^|\.)fonts\.(googleapis|gstatic)\.com$/.test(hn)))return;
   e.respondWith(fetch(r).then(x=>{const c=x.clone();caches.open(C).then(k=>k.put(r,c));return x}).catch(()=>caches.match(r).then(x=>x||caches.match('index.html'))));
 });
 self.addEventListener('periodicsync',e=>{if(e.tag=='due')e.waitUntil((async()=>{
