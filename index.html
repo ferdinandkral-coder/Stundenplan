@@ -74,6 +74,8 @@ nav b{margin-left:6px;background:var(--hot);color:#fff;border-radius:99px;paddin
 @keyframes up{from{transform:translateY(40px);opacity:0}}
 .card h2{font:700 28px/1.05 var(--sans);margin:0;color:hsl(var(--h) 100% 68%)}.card p{margin:6px 0 0;color:var(--mute);font:12px var(--mono)}
 #toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:#16223a;border:1px solid var(--line);color:var(--ink);padding:10px 16px;border-radius:14px;z-index:20;max-width:90vw;font-size:14px}#toast:empty{display:none}
+@keyframes sl{from{transform:translateX(calc(var(--dx)*28px));opacity:.3}}
+#main.sw{animation:sl .22s ease-out}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style></head><body>
 <header><div><div class="eye">Untis · Wochenplan</div><h1>Stundenplan</h1><p id="sub"></p></div><button id="sync" aria-label="Stundenplan aktualisieren">⟳</button></header>
@@ -266,6 +268,16 @@ document.addEventListener('click',e=>{
  else if(d.k)openSheet(d.k)});
 $('#sheet').onclick=e=>{if(e.target.id=='sheet')e.target.hidden=true};
 $('#sync').onclick=sync;
+
+// ---- Wischen: links = nächster Tag, rechts = voriger Tag ----
+(()=>{let x0=0,y0=0,ok=false;const m=$('#main');
+ m.addEventListener('touchstart',e=>{ok=tab=='plan'&&e.touches.length==1;x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+ m.addEventListener('touchend',e=>{if(!ok)return;ok=false;const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;
+  if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;
+  const dir=dx<0?1:-1,has=d=>L.some(l=>sod(l.s).getTime()==d.getTime());
+  let d=new Date(day);for(let i=0;i<14;i++){d.setDate(d.getDate()+dir);if(d.getDay()%6||has(d))break}
+  day=sod(d);render();m.style.setProperty('--dx',dir);m.classList.remove('sw');void m.offsetWidth;m.classList.add('sw')},{passive:true});
+ m.addEventListener('touchcancel',()=>ok=false,{passive:true})})();
 addEventListener('online',render);addEventListener('offline',render);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();runCheck()}});setInterval(runCheck,60000);
 
