@@ -74,19 +74,33 @@ nav b{margin-left:6px;background:var(--hot);color:#fff;border-radius:99px;paddin
 @keyframes up{from{transform:translateY(40px);opacity:0}}
 .card h2{font:700 28px/1.05 var(--sans);margin:0;color:hsl(var(--h) 100% 68%)}.card p{margin:6px 0 0;color:var(--mute);font:12px var(--mono)}
 #toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:#16223a;border:1px solid var(--line);color:var(--ink);padding:10px 16px;border-radius:14px;z-index:20;max-width:90vw;font-size:14px}#toast:empty{display:none}
+nav{transition:transform .25s ease}nav.hide{transform:translate(-50%,calc(100% + 28px))}
+nav button{font-size:10px;letter-spacing:.02em;padding:12px 2px}
+.card{max-height:92vh;overflow:auto}
+select{width:100%;font:inherit;color:var(--ink);background:#0a1120;border:1px solid #26354f;border-radius:14px;padding:11px 14px}
+.nbar{display:flex;flex-direction:column;gap:10px;margin:8px 0 16px}.nbar .row2{display:flex;gap:10px}.nbar .row2>*{flex:1;min-width:0}.nbar .ghost{padding:11px 10px;font-size:13px}
+.nc{background:var(--card);border:1px solid hsl(var(--h) 70% 28%);border-left:5px solid hsl(var(--h) 100% 58%);border-radius:18px;padding:12px 14px;margin-bottom:12px}
+.nc .nt{display:block;width:100%;text-align:left}.nc .nt b{display:block;font:700 18px var(--sans);color:hsl(var(--h) 100% 68%)}.nc .nt small{font:11px var(--mono);color:var(--mute)}
+.nc .nt p{margin:6px 0 0;color:var(--ink);font:15px/1.4 var(--sans);white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.au{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}.au .du{flex:1;min-width:90px;font:600 13px var(--mono);color:var(--ink)}.au .du small{display:block;font:11px var(--mono);color:var(--mute)}
+.pl{flex:none;width:40px;height:40px;border-radius:50%;background:var(--acc);color:#00121f;font-size:15px}
+.au .sm{padding:8px 12px;font-size:13px;border-radius:12px}.tr{flex-basis:100%;min-height:70px}
+.rec{width:100%;background:#2a1420;border:1px solid var(--hot);color:#ff8aa0;border-radius:14px;padding:12px;font-weight:700}.rec.on{background:var(--hot);color:#fff;animation:pu 1.2s infinite}@keyframes pu{50%{opacity:.7}}
+.lv{margin-top:8px;padding:10px 12px;border-radius:12px;background:#0a1120;border:1px dashed #26354f;color:var(--mute);font-size:14px}
+.fzs{display:flex;flex-wrap:wrap;gap:8px}.chip2{padding:9px 12px;border-radius:99px;background:#0a1120;border:1px solid #26354f;font:600 13px var(--sans);color:var(--ink)}.chip2.on{background:hsl(var(--h) 100% 58%);color:#00121f;border-color:transparent}
 @keyframes sl{from{transform:translateX(calc(var(--dx)*28px));opacity:.3}}
 #main.sw{animation:sl .22s ease-out}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style></head><body>
 <header><div><div class="eye">Untis · Wochenplan</div><h1>Stundenplan</h1><p id="sub"></p></div><button id="sync" aria-label="Stundenplan aktualisieren">⟳</button></header>
 <main id="main"></main>
-<nav><button data-t="plan">Plan</button><button data-t="todo">To-do<b id="cnt"></b></button><button data-t="set">Einstellungen</button></nav>
+<nav><button data-t="plan">Plan</button><button data-t="todo">To-do<b id="cnt"></b></button><button data-t="notes">Notizen</button><button data-t="set">Einstellungen</button></nav>
 <div id="sheet" class="sheet" hidden></div><div id="toast" role="status"></div>
 <script>
 // Gemeinsam genutzt von index.html und sw.js
 const lk=l=>l.sub+'|'+l.s;
 const sod=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
-const nextOf=(L,l)=>L.filter(x=>x.sub===l.sub&&x.s>l.s).sort((a,b)=>a.s-b.s)[0];
+const nextOf=(L,l)=>L.filter(x=>(x.f||x.sub)===(l.f||l.sub)&&x.s>l.s).sort((a,b)=>a.s-b.s)[0];
 const fmt=s=>new Date(s).toLocaleString('de-AT',{weekday:'short',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
 const rel=s=>{const n=Math.round((sod(s)-sod(Date.now()))/864e5);return n<=0?'heute':n==1?'morgen':'in '+n+' Tagen'};
 
@@ -99,7 +113,7 @@ async function notifyDue(L,N,reg){
     const passed=[2,1].filter(d=>{const t=new Date(nx.s);t.setDate(t.getDate()-d);t.setHours(17,0,0,0);return now>=t.getTime()});
     if(!passed.some(d=>!(n.sent||[]).includes(d)))continue;
     n.sent=[...new Set([...(n.sent||[]),...passed])];changed=true;
-    await reg.showNotification(l.sub+': Hausübung '+rel(nx.s),{body:n.hw+'\nNächste Stunde: '+fmt(nx.s),tag:lk(l),icon:'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%20xmlns%3Ac2pa%3D%22http%3A//c2pa.org/manifest%22%3E%3Cmetadata%3E%3Cc2pa%3Amanifest%3EAAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYToyNGI2MTdlNS1kZGJkLTQ1YjktOTE3Ni04OWQwNjEyNjFlNjcAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaEyCLYAD9JxuMsBvacxeoK8AAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDoyYjRjNGZlNC02NDg5LTQyMTMtODBkMC1lMmI3MzZhM2E1ZTVscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNohzMQDhQfyCv4vRfgU5VUGAAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggIn3/2AkExFrYCsmSkj9/vBtHxA1o/DKJw8U9wpoUQhekZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaJDLqTwoN%2BsEOiZW8lfxKtsAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRNAAAAAAAAAAAAAAAAAGRoYXNoWCBUmEbraxTQX1aCdQLbIOq8yHwXCMJxgOLmUkqD6KP3m2RuYW1lbmp1bWJmIG1hbmlmZXN0amV4Y2x1c2lvbnOBomVzdGFydBh9Zmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjI0YjYxN2U1LWRkYmQtNDViOS05MTc2LTg5ZDA2MTI2MWU2Ny9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjhiZWQ1ZDIxLTVmMDYtNGQ3NS04YTkzLTIzMWM4ZTJmMzI5ZnJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCAiff/YCQTEWtgKyZKSP3%2B8G0fEDWj8MonDxT3CmhRCF6JjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggADxJPPpeA8VUvxkFiJoVCLZi9rry1c/7HeFPDs3bBSGiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggdzgrKLg/KqE9/Md6tGn5UPXSLfKZuOlI4wHI132pYzF0Y2xhaW1fZ2VuZXJhdG9yX2luZm%2BjZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj%2BOPEz5o%2BnMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1%2BUCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9%2B1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQLioP7kNH8M7PxYMPfzJYfRn/vRF73bU8nusROD7M5TO8CBlaaBPfOKw3L1K4iZWxzjBkjt3rqfV2oj2F8Wo5wg%3D%3C/c2pa%3Amanifest%3E%3C/metadata%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20fill%3D%22%232f5bff%22/%3E%3Cg%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.18%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M0%20128h512M0%20256h512M0%20384h512M128%200v512M256%200v512M384%200v512%22/%3E%3C/g%3E%3Crect%20x%3D%2296%22%20y%3D%22112%22%20width%3D%22140%22%20height%3D%22150%22%20rx%3D%2214%22%20fill%3D%22%23ffd23f%22/%3E%3Crect%20x%3D%22262%22%20y%3D%22112%22%20width%3D%22154%22%20height%3D%2296%22%20rx%3D%2214%22%20fill%3D%22%23fff%22/%3E%3Crect%20x%3D%2296%22%20y%3D%22288%22%20width%3D%22196%22%20height%3D%22112%22%20rx%3D%2214%22%20fill%3D%22%23fff%22/%3E%3Crect%20x%3D%22318%22%20y%3D%22234%22%20width%3D%2298%22%20height%3D%22166%22%20rx%3D%2214%22%20fill%3D%22%23ff5c39%22/%3E%3C/svg%3E'});
+    await reg.showNotification((l.f||l.sub)+': Hausübung '+rel(nx.s),{body:n.hw+'\nNächste Stunde: '+fmt(nx.s),tag:lk(l),icon:'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20512%20512%22%20xmlns%3Ac2pa%3D%22http%3A//c2pa.org/manifest%22%3E%3Cmetadata%3E%3Cc2pa%3Amanifest%3EAAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYToyNGI2MTdlNS1kZGJkLTQ1YjktOTE3Ni04OWQwNjEyNjFlNjcAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaEyCLYAD9JxuMsBvacxeoK8AAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDoyYjRjNGZlNC02NDg5LTQyMTMtODBkMC1lMmI3MzZhM2E1ZTVscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNohzMQDhQfyCv4vRfgU5VUGAAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggIn3/2AkExFrYCsmSkj9/vBtHxA1o/DKJw8U9wpoUQhekZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaJDLqTwoN%2BsEOiZW8lfxKtsAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRNAAAAAAAAAAAAAAAAAGRoYXNoWCBUmEbraxTQX1aCdQLbIOq8yHwXCMJxgOLmUkqD6KP3m2RuYW1lbmp1bWJmIG1hbmlmZXN0amV4Y2x1c2lvbnOBomVzdGFydBh9Zmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjI0YjYxN2U1LWRkYmQtNDViOS05MTc2LTg5ZDA2MTI2MWU2Ny9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjhiZWQ1ZDIxLTVmMDYtNGQ3NS04YTkzLTIzMWM4ZTJmMzI5ZnJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCAiff/YCQTEWtgKyZKSP3%2B8G0fEDWj8MonDxT3CmhRCF6JjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggADxJPPpeA8VUvxkFiJoVCLZi9rry1c/7HeFPDs3bBSGiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggdzgrKLg/KqE9/Md6tGn5UPXSLfKZuOlI4wHI132pYzF0Y2xhaW1fZ2VuZXJhdG9yX2luZm%2BjZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj%2BOPEz5o%2BnMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1%2BUCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9%2B1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQLioP7kNH8M7PxYMPfzJYfRn/vRF73bU8nusROD7M5TO8CBlaaBPfOKw3L1K4iZWxzjBkjt3rqfV2oj2F8Wo5wg%3D%3C/c2pa%3Amanifest%3E%3C/metadata%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20fill%3D%22%232f5bff%22/%3E%3Cg%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.18%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M0%20128h512M0%20256h512M0%20384h512M128%200v512M256%200v512M384%200v512%22/%3E%3C/g%3E%3Crect%20x%3D%2296%22%20y%3D%22112%22%20width%3D%22140%22%20height%3D%22150%22%20rx%3D%2214%22%20fill%3D%22%23ffd23f%22/%3E%3Crect%20x%3D%22262%22%20y%3D%22112%22%20width%3D%22154%22%20height%3D%2296%22%20rx%3D%2214%22%20fill%3D%22%23fff%22/%3E%3Crect%20x%3D%2296%22%20y%3D%22288%22%20width%3D%22196%22%20height%3D%22112%22%20rx%3D%2214%22%20fill%3D%22%23fff%22/%3E%3Crect%20x%3D%22318%22%20y%3D%22234%22%20width%3D%2298%22%20height%3D%22166%22%20rx%3D%2214%22%20fill%3D%22%23ff5c39%22/%3E%3C/svg%3E'});
   }
   return changed;
 }
@@ -116,7 +130,11 @@ const hue=s=>{let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h};
 const PX=1.5,tm=s=>new Date(s).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'});
 let S=LS('cfg',{url:'',proxy:'',at:0}),L=LS('lessons',[]),N=LS('notes',{}),day=(d=>{d=sod(d);if(d.getDay()==6)d.setDate(d.getDate()+2);if(d.getDay()==0)d.setDate(d.getDate()+1);return d})(new Date()),tab=location.hash=='#todo'?'todo':'plan';
 const toast=m=>{$('#toast').textContent=m;clearTimeout(toast.t);toast.t=setTimeout(()=>$('#toast').textContent='',3500)};
-const save=()=>{localStorage.setItem('notes',JSON.stringify(N));localStorage.setItem('lessons',JSON.stringify(L));localStorage.setItem('cfg',JSON.stringify(S));idbPut({L,N}).catch(()=>{})};
+// Unterfächer: eine Untis-Stunde kann mehrere Fächer umfassen (z. B. Konstruktion und Fertigung)
+const SPLIT={re:/^konstruktion und fertigung/i,list:['Mechanik','Konstruktionsübungen','Darstellende Geometrie','Maschinenelemente','Fertigungstechnik']};
+const fh=l=>l.f||l.sub,gk=l=>l.code?'c:'+l.code+'|'+(l.teacher||''):'w:'+new Date(l.s).getDay()+'@'+tm(l.s)+'|'+l.sub;
+const applyFz=()=>{for(const l of L){const f=SPLIT.re.test(l.sub)&&S.fz&&S.fz[gk(l)];if(f)l.f=f;else delete l.f}};
+const save=()=>{applyFz();localStorage.setItem('notes',JSON.stringify(N));localStorage.setItem('lessons',JSON.stringify(L));localStorage.setItem('cfg',JSON.stringify(S));idbPut({L,N}).catch(()=>{})};
 
 // ---- Untis-Kalender (iCal) einlesen ----
 const dt=v=>{const m=v.match(/(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)?(Z)?/);if(!m)return 0;const a=[+m[1],m[2]-1,+m[3],+m[4],+m[5],+(m[6]||0)];return m[7]?Date.UTC(...a):new Date(...a).getTime()};
@@ -155,7 +173,7 @@ async function syncP(){
  try{
   const r=await fetch(S.proxy.trim().split('?')[0].replace(/\/$/,'')+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host:m.host,school:m.school,user:m.user,password:m.pw})});
   const j=await r.json();if(j.error)throw new Error(j.error);
-  const x=j.lessons.map(l=>({sub:l.sub,s:new Date(l.start).getTime(),e:new Date(l.end).getTime(),room:l.room})).filter(l=>l.s&&l.e).sort((a,b)=>a.s-b.s);
+  const x=j.lessons.map(l=>({sub:l.sub,s:new Date(l.start).getTime(),e:new Date(l.end).getTime(),room:l.room,code:l.code,teacher:l.teacher})).filter(l=>l.s&&l.e).sort((a,b)=>a.s-b.s);
   if(!x.length)throw new Error('Keine Stunden erhalten ('+JSON.stringify(j.debug)+')');
   L=x;S.at=Date.now();save();render();toast(L.length+' Stunden geladen')
  }catch(e){toast('Abruf fehlgeschlagen: '+e.message)}
@@ -184,7 +202,7 @@ function render(){
  const dd=s=>new Date(s).toLocaleDateString('de-AT',{day:'numeric',month:'numeric'});
  $('#sub').textContent=(S.at?'Stand '+fmt(S.at):'Noch nicht geladen')+(L.length?' · '+L.length+' Stunden ('+dd(L[0].s)+'–'+dd(L[L.length-1].s)+')':'')+(navigator.onLine?'':' · offline');
  $('#cnt').textContent=openHw().length||'';
- ({plan:rPlan,todo:rTodo,set:rSet})[tab]()}
+ $('nav').classList.remove('hide');({plan:rPlan,todo:rTodo,notes:rNotes,set:rSet})[tab]()}
 const empty=()=>`<div class="empty"><b>Noch kein Stundenplan</b>Füge in den Einstellungen deinen Untis-Link ein.<br><br><button class="pri" data-go="set">Einstellungen öffnen</button></div>`;
 function rPlan(){
  if(!L.length)return $('#main').innerHTML=empty();
@@ -198,7 +216,7 @@ function rPlan(){
  const hrs=[];for(let t=base;t<=end+36e5-1;t+=36e5)hrs.push(t);
  h+=`<div class="tl" data-base="${base}" data-end="${end}" style="height:${H}px">`+hrs.map(t=>`<div class="hl" style="top:${(t-base)/6e4*PX}px"><span>${tm(t)}</span></div>`).join('');
  const now=Date.now();if(now>base&&now<end+36e5)h+=`<div class="now" data-t="${tm(now)}" style="top:${(now-base)/6e4*PX}px"></div>`;
- h+=dl.map(l=>{const n=N[lk(l)]||{};return `<button class="blk ${l.e<=now?'past':l.s<=now?'cur':'up'}" data-s="${l.s}" data-e="${l.e}" data-k="${esc(lk(l))}" style="--h:${hue(l.sub)};top:${(l.s-base)/6e4*PX}px;height:${(l.e-l.s)/6e4*PX-4}px"><b>${esc(l.sub)}</b><span>${tm(l.s)}–${tm(l.e)} ${esc(l.room)}</span><div class="tg">${n.note?'<i>Notiz</i>':''}${n.hw?`<i class="${n.done?'ok':'hw'}">${n.done?'erledigt':'HÜ'}</i>`:''}</div></button>`}).join('')+'</div>';
+ h+=dl.map(l=>{const n=N[lk(l)]||{};return `<button class="blk ${l.e<=now?'past':l.s<=now?'cur':'up'}" data-s="${l.s}" data-e="${l.e}" data-k="${esc(lk(l))}" style="--h:${hue(fh(l))};top:${(l.s-base)/6e4*PX}px;height:${(l.e-l.s)/6e4*PX-4}px"><b>${esc(fh(l))}</b><span>${tm(l.s)}–${tm(l.e)} ${esc(l.room)}</span><div class="tg">${n.note?'<i>Notiz</i>':''}${(n.audio||[]).length?'<i>Audio</i>':''}${n.hw?`<i class="${n.done?'ok':'hw'}">${n.done?'erledigt':'HÜ'}</i>`:''}</div></button>`}).join('')+'</div>';
  $('#main').innerHTML=h}
 // Zeitlinie + Farben live nachführen (ohne Neuaufbau)
 function tick(){
@@ -214,7 +232,7 @@ setInterval(tick,15000);
 const items=()=>L.filter(l=>(N[lk(l)]||{}).hw).map(l=>({l,n:N[lk(l)],nx:nextOf(L,l)}));
 const openHw=()=>items().filter(x=>!x.n.done);
 function rTodo(){
- const card=x=>`<div class="td ${x.n.done?'dn':''}" style="--h:${hue(x.l.sub)}"><button class="ck" data-c="${esc(lk(x.l))}" aria-label="Erledigt umschalten">${x.n.done?'✓':''}</button><button class="tx" data-k="${esc(lk(x.l))}"><b>${esc(x.l.sub)}</b>${esc(x.n.hw)}<br>${x.nx?`<span class="when ${(sod(x.nx.s)-sod(Date.now()))/864e5<=1?'hot':''}">${rel(x.nx.s)} · ${fmt(x.nx.s)}</span>`:'<small>Keine weitere Stunde bekannt</small>'}</button></div>`;
+ const card=x=>`<div class="td ${x.n.done?'dn':''}" style="--h:${hue(fh(x.l))}"><button class="ck" data-c="${esc(lk(x.l))}" aria-label="Erledigt umschalten">${x.n.done?'✓':''}</button><button class="tx" data-k="${esc(lk(x.l))}"><b>${esc(fh(x.l))}</b>${esc(x.n.hw)}<br>${x.nx?`<span class="when ${(sod(x.nx.s)-sod(Date.now()))/864e5<=1?'hot':''}">${rel(x.nx.s)} · ${fmt(x.nx.s)}</span>`:'<small>Keine weitere Stunde bekannt</small>'}</button></div>`;
  const o=openHw().sort((a,b)=>(a.nx?a.nx.s:1e15)-(b.nx?b.nx.s:1e15)),d=items().filter(x=>x.n.done);
  $('#main').innerHTML=(o.length?o.map(card).join(''):`<div class="empty"><b>Alles erledigt</b>Hausübungen trägst du direkt bei der Stunde im Plan ein.</div>`)+(d.length?`<h3>Erledigt</h3>`+d.map(card).join(''):'')}
 function rSet(){
@@ -245,18 +263,92 @@ async function runCheck(){
  if(!('serviceWorker' in navigator)||!('Notification' in window)||Notification.permission!='granted')return;
  const r=await navigator.serviceWorker.ready;if(await notifyDue(L,N,r)){save();render()}}
 
+// ---- Audio (Aufnahmen liegen als Blob in einer eigenen IndexedDB) ----
+const adb=()=>new Promise((ok,no)=>{const q=indexedDB.open('stundenplan-audio',1);q.onupgradeneeded=()=>q.result.createObjectStore('a');q.onsuccess=()=>ok(q.result);q.onerror=no});
+const aPut=async(id,b)=>{const d=await adb();return new Promise((ok,no)=>{const t=d.transaction('a','readwrite');t.objectStore('a').put(b,id);t.oncomplete=ok;t.onerror=no})};
+const aGet=async id=>{const d=await adb();return new Promise(r=>{const q=d.transaction('a').objectStore('a').get(id);q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})};
+const aDel=async id=>{const d=await adb();d.transaction('a','readwrite').objectStore('a').delete(id)};
+const dur=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+const aRow=(k,a,ed)=>`<div class="au"><button class="pl" data-p="${a.id}" aria-label="Abspielen">▶</button><span class="du">${dur(a.dur||0)}<small>${fmt(a.t)}</small></span><button class="ghost sm" data-x="${a.id}">Text</button>${ed?`${S.proxy?`<button class="ghost sm" data-tr="${a.id}" data-nk="${esc(k)}" aria-label="Text neu erkennen">↻</button>`:''}<button class="ghost sm" data-del="${a.id}" data-nk="${esc(k)}" aria-label="Löschen">🗑</button>`:''}<textarea class="tr" data-e="${a.id}" data-nk="${esc(k)}" hidden placeholder="Kein Text erkannt – hier eintippen">${esc(a.text||'')}</textarea></div>`;
+let AP=null,R=null,curK='';
+function stopAP(){if(!AP)return;AP.a.pause();URL.revokeObjectURL(AP.u);document.querySelectorAll('.pl').forEach(b=>b.textContent='▶');AP=null}
+async function play(id,btn){
+ if(AP&&AP.id==id)return stopAP();stopAP();
+ const b=await aGet(id);if(!b)return toast('Audio nicht gefunden');
+ const u=URL.createObjectURL(b),a=new Audio(u);AP={id,a,u};btn.textContent='❚❚';a.onended=stopAP;a.play().catch(()=>{toast('Wiedergabe nicht möglich');stopAP()})}
+function drawAl(){const e=$('#al');if(e)e.innerHTML=((N[curK]||{}).audio||[]).map(y=>aRow(curK,y,true)).join('')}
+function delAudio(k,id){if(!confirm('Audionotiz löschen?'))return;if(AP&&AP.id==id)stopAP();N[k].audio=(N[k].audio||[]).filter(a=>a.id!=id);aDel(id);save();curK==k?drawAl():render()}
+// Text per Cloudflare-Worker (Whisper) – optional, nur wenn der Worker „Workers AI“ eingebunden hat
+async function transcribe(k,id,quiet){
+ const b=await aGet(id);if(!b||!S.proxy)return false;
+ try{const r=await fetch(S.proxy.trim().split('?')[0].replace(/\/$/,'')+'/transcribe',{method:'POST',headers:{'Content-Type':b.type||'audio/webm'},body:b}),j=await r.json();
+  if(j.error)throw new Error(j.error);const a=((N[k]||{}).audio||[]).find(x=>x.id==id);
+  if(a&&j.text){a.text=j.text.trim();save();return true}}catch(e){if(!quiet)toast('Text-Erkennung: '+e.message)}
+ return false}
+function recUi(){const b=$('#rb');if(!b)return;
+ if(R){b.className='rec on';b.textContent=R.t1?'Speichere …':'■ Stopp · '+dur(Math.round((Date.now()-R.t0)/1000))}
+ else{b.className='rec';b.textContent='● Audionotiz aufnehmen';const v=$('#lv');if(v)v.hidden=true}}
+const lvDraw=()=>{const v=$('#lv');if(v&&R){v.hidden=false;v.textContent=(R.acc+R.cur).trim()||'Sprich jetzt …'}};
+async function recStart(){
+ if(R)return recStop();
+ if(!navigator.mediaDevices||!window.MediaRecorder)return toast('Aufnahme wird von diesem Browser nicht unterstützt');
+ let st;try{st=await navigator.mediaDevices.getUserMedia({audio:true})}catch{return toast('Mikrofon nicht erlaubt')}
+ const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t))||'',ch=[],mr=new MediaRecorder(st,mt?{mimeType:mt}:undefined);
+ const r=R={k:curK,mr,st,t0:Date.now(),on:true,acc:'',cur:''};
+ mr.ondataavailable=e=>{if(e.data.size)ch.push(e.data)};mr.onstop=()=>recDone(r,ch,mt);mr.start(1000);
+ r.iv=setInterval(recUi,500);recUi();
+ // Live-Text (Spracherkennung des Browsers), falls verfügbar
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(SR){let fatal=false;const go=()=>{if(!r.on||fatal)return;const x=new SR();x.lang='de-AT';x.continuous=true;x.interimResults=true;r.sr=x;
+   x.onresult=e=>{r.cur=[...e.results].map(y=>y[0].transcript).join(' ');lvDraw()};
+   x.onerror=e=>{if(/not-allowed|service-not-allowed|audio-capture/.test(e.error))fatal=true};
+   x.onend=()=>{r.acc+=r.cur+' ';r.cur='';if(r.on&&!fatal)setTimeout(go,200)};
+   try{x.start()}catch{}};go()}}
+function recStop(){if(!R||R.t1)return;R.t1=Date.now();R.on=false;try{R.sr&&R.sr.stop()}catch{}if(R.mr.state!='inactive')R.mr.stop();recUi()}
+async function recDone(r,ch,mt){
+ r.st.getTracks().forEach(t=>t.stop());clearInterval(r.iv);
+ await new Promise(z=>setTimeout(z,400));
+ const text=(r.acc+r.cur).trim(),b=new Blob(ch,{type:mt||'audio/webm'}),id='a'+Date.now().toString(36);
+ R=null;recUi();
+ if(b.size<800)return toast('Aufnahme war zu kurz');
+ try{await aPut(id,b)}catch{return toast('Audio konnte nicht gespeichert werden')}
+ const n=N[r.k]||(N[r.k]={note:'',hw:'',done:false,sent:[]});(n.audio=n.audio||[]).push({id,t:r.t0,dur:Math.max(1,Math.round(((r.t1||Date.now())-r.t0)/1000)),text});
+ save();const re=()=>curK==r.k?drawAl():render();re();
+ if(S.proxy&&await transcribe(r.k,id,true))re()}
+const closeSheet=()=>{recStop();stopAP();$('#sheet').hidden=true;curK=''};
+
 // ---- Stunde bearbeiten ----
+function fzDraw(l){const c=$('#fz');if(!c)return;
+ c.innerHTML=SPLIT.list.map(f=>`<button class="chip2 ${l.f==f?'on':''}" data-fz="${esc(f)}">${esc(f)}</button>`).join('');
+ $('#fzh').textContent='Gilt für alle Stunden '+(l.code?'mit Kürzel '+l.code+(l.teacher?' ('+l.teacher+')':''):'am gleichen Wochentag zur gleichen Uhrzeit')+'. Nochmal tippen hebt die Auswahl auf.';
+ $('#cd').style.setProperty('--h',hue(fh(l)));$('#cd h2').textContent=fh(l)}
+function setFz(f){const l=L.find(x=>lk(x)==curK);if(!l)return;S.fz=S.fz||{};const g=gk(l);if(S.fz[g]==f)delete S.fz[g];else S.fz[g]=f;save();fzDraw(l);render()}
 function openSheet(k){
- const l=L.find(x=>lk(x)==k);if(!l)return;const n=N[k]||{},nx=nextOf(L,l),s=$('#sheet');
- s.hidden=false;s.innerHTML=`<div class="card" style="--h:${hue(l.sub)}"><h2>${esc(l.sub)}</h2><p>${fmt(l.s)} – ${tm(l.e)} ${esc(l.room)}</p>
+ const l=L.find(x=>lk(x)==k);if(!l)return;const n=N[k]||{},nx=nextOf(L,l),s=$('#sheet');curK=k;
+ s.hidden=false;s.innerHTML=`<div class="card" id="cd" style="--h:${hue(fh(l))}"><h2>${esc(fh(l))}</h2><p>${fmt(l.s)} – ${tm(l.e)} ${esc(l.room)}${l.code?' · '+esc(l.code):''}${l.teacher?' · '+esc(l.teacher):''}</p>
+ ${SPLIT.re.test(l.sub)?'<label>Fach</label><div class="fzs" id="fz"></div><p class="hint" id="fzh"></p>':''}
  <label for="nn">Notiz</label><textarea id="nn">${esc(n.note||'')}</textarea>
+ <label>Audionotiz</label><button class="rec" id="rb"></button><div class="lv" id="lv" hidden></div><div id="al"></div>
  <label for="hh">Hausübung</label><textarea id="hh">${esc(n.hw||'')}</textarea>
  <p class="hint">${nx?'Fällig zur nächsten Stunde: '+fmt(nx.s):'Keine weitere Stunde dieses Fachs bekannt.'}</p>
  <div class="row"><button class="ghost" id="cx">Abbrechen</button><button class="pri" id="ok">Speichern</button></div></div>`;
- $('#cx').onclick=()=>s.hidden=true;
- $('#ok').onclick=()=>{const note=$('#nn').value.trim(),hw=$('#hh').value.trim();
-  if(!note&&!hw)delete N[k];else N[k]={note,hw,done:hw?!!n.done:false,sent:hw==n.hw?(n.sent||[]):[]};
-  save();s.hidden=true;render();runCheck()}}
+ fzDraw(l);drawAl();recUi();$('#rb').onclick=recStart;$('#cx').onclick=closeSheet;
+ $('#ok').onclick=()=>{const note=$('#nn').value.trim(),hw=$('#hh').value.trim(),o=N[k]||{};
+  if(!note&&!hw&&!(o.audio||[]).length)delete N[k];else N[k]={...o,note,hw,done:hw?!!o.done:false,sent:hw==o.hw?(o.sent||[]):[]};
+  closeSheet();save();render();runCheck()}}
+
+// ---- Notizen-Übersicht ----
+let nq='',ns=-1,nf='';
+const allNotes=()=>Object.entries(N).filter(([k,n])=>n&&(n.note||(n.audio||[]).length)).map(([k,n])=>{const i=k.lastIndexOf('|'),l=L.find(x=>lk(x)==k);return{k,n,s:l?l.s:+k.slice(i+1),f:l?fh(l):k.slice(0,i)}});
+function rNotes(){
+ const fs=[...new Set(allNotes().map(x=>x.f))].sort((a,b)=>a.localeCompare(b,'de'));if(nf&&!fs.includes(nf))nf='';
+ $('#main').innerHTML=`<div class="nbar"><input id="nq" type="search" placeholder="Notizen durchsuchen …" value="${esc(nq)}" autocomplete="off"><div class="row2"><select id="nf" aria-label="Nach Fach filtern"><option value="">Alle Fächer</option>${fs.map(f=>`<option value="${esc(f)}" ${f==nf?'selected':''}>${esc(f)}</option>`).join('')}</select><button class="ghost" id="ns"></button></div></div><div id="nl"></div>`;
+ $('#nq').oninput=e=>{nq=e.target.value;drawNotes()};$('#nf').onchange=e=>{nf=e.target.value;drawNotes()};$('#ns').onclick=()=>{ns=-ns;drawNotes()};drawNotes()}
+function drawNotes(){
+ $('#ns').textContent=ns<0?'Neueste zuerst ↓':'Älteste zuerst ↑';
+ const q=nq.trim().toLowerCase(),all=allNotes(),a=all.filter(x=>(!nf||x.f==nf)&&(!q||[x.f,x.n.note,fmt(x.s),...(x.n.audio||[]).map(y=>y.text)].join(' ').toLowerCase().includes(q))).sort((p,r)=>(p.s-r.s)*ns);
+ $('#nl').innerHTML=a.length?a.map(x=>`<div class="nc" style="--h:${hue(x.f)}"><button class="nt" data-k="${esc(x.k)}"><b>${esc(x.f)}</b><small>${fmt(x.s)}</small>${x.n.note?`<p>${esc(x.n.note)}</p>`:''}</button>${(x.n.audio||[]).map(y=>aRow(x.k,y,false)).join('')}</div>`).join('')
+  :`<div class="empty"><b>${all.length?'Nichts gefunden':'Noch keine Notizen'}</b>${all.length?'Suche oder Fach-Filter anpassen.':'Notizen und Audionotizen legst du direkt bei der Stunde im Plan an.'}</div>`}
 
 document.addEventListener('click',e=>{
  const t=e.target.closest('button,[data-k]');if(!t)return;const d=t.dataset;
@@ -265,8 +357,14 @@ document.addEventListener('click',e=>{
  else if(d.d){day=new Date(+d.d);render()}
  else if(d.w){day=new Date(day);day.setDate(day.getDate()+ +d.w);render()}
  else if(d.c){N[d.c].done=!N[d.c].done;if(!N[d.c].done)N[d.c].sent=[];save();render()}
+ else if(d.fz)setFz(d.fz)
+ else if(d.p)play(d.p,t)
+ else if(d.x){const x=t.parentElement.querySelector('.tr');if(x)x.hidden=!x.hidden}
+ else if(d.del)delAudio(d.nk,d.del)
+ else if(d.tr){toast('Erkenne Text …');transcribe(d.nk,d.tr,false).then(ok=>{if(ok){toast('Text aktualisiert');curK==d.nk?drawAl():render()}})}
  else if(d.k)openSheet(d.k)});
-$('#sheet').onclick=e=>{if(e.target.id=='sheet')e.target.hidden=true};
+document.addEventListener('change',e=>{const t=e.target;if(!t.classList||!t.classList.contains('tr'))return;const a=((N[t.dataset.nk]||{}).audio||[]).find(x=>x.id==t.dataset.e);if(a){a.text=t.value.trim();save()}});
+$('#sheet').onclick=e=>{if(e.target.id=='sheet')closeSheet()};
 $('#sync').onclick=sync;
 
 // ---- Wischen: links = nächster Tag, rechts = voriger Tag ----
@@ -278,6 +376,8 @@ $('#sync').onclick=sync;
   let d=new Date(day);for(let i=0;i<14;i++){d.setDate(d.getDate()+dir);if(d.getDay()%6||has(d))break}
   day=sod(d);render();m.style.setProperty('--dx',dir);m.classList.remove('sw');void m.offsetWidth;m.classList.add('sw')},{passive:true});
  m.addEventListener('touchcancel',()=>ok=false,{passive:true})})();
+// ---- Menü beim Runterscrollen ausblenden, beim Raufscrollen zeigen ----
+(()=>{let y=scrollY;addEventListener('scroll',()=>{const c=scrollY;if(Math.abs(c-y)<8)return;$('nav').classList.toggle('hide',c>y&&c>80);y=c},{passive:true})})();
 addEventListener('online',render);addEventListener('offline',render);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();runCheck()}});setInterval(runCheck,60000);
 
